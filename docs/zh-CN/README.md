@@ -42,11 +42,11 @@
 - macOS 14.4 或更高版本，以及 Xcode Command Line Tools，用于编译 Swift helper
 - MCP 服务器需要 Node.js 22 或更高版本。开发检查使用 Node.js 22.13 及以上的 22.x 版本，或 Node.js 24 及以上版本。
 
-已记录的验证环境是 macOS 26.6.2 arm64、Node.js 24.15.0。其他操作系统和架构没有实机验证。`npm run package` 可以在本地生成插件 ZIP；该 ZIP 只需要 macOS 和 Node.js，不需要编译器或 `npm install`。本仓库有 `v1.0.0` 至 `v1.3.0` 标签，以及容器 broker 目标标签 `2.0/goal`；不发布 GitHub Releases。这些本地包的验收见[验证记录](VALIDATION.md)。
+已记录的验证环境是 macOS 26.6.2 arm64、Node.js 24.15.0。其他操作系统和架构没有实机验证。`npm run package` 可以在本地生成插件 ZIP；该 ZIP 只需要 macOS 和 Node.js，不需要编译器或 `npm install`。本仓库有 `v1.0.0` 至 `v1.3.0` 标签，不发布 GitHub Releases。这些本地包的验收见[验证记录](VALIDATION.md)。
 
 请在系统设置中，把辅助功能（Accessibility）和屏幕录制授给实际启动服务器的终端、Agent 或 helper。本项目不能替你修改 TCC 数据库。启动链变化后，重新运行 doctor。
 
-服务器进程拥有启动它的用户的桌面权限。它是可信的本地 Node.js 进程，不是安全沙箱，只应执行你信任的 Agent 提供的 JavaScript。可选的 Docker 路径把 MCP/REPL 的 Node 进程与宿主机文件和 Swift helper 隔离；见[容器宿主机 Broker](#容器宿主机-broker)以及[架构说明](../ARCHITECTURE.md#remaining-security-limitations)中的安全局限。
+服务器进程拥有启动它的用户的桌面权限。它是可信的本地 Node.js 进程，不是安全沙箱，只应执行你信任的 Agent 提供的 JavaScript。
 
 ## 安装、构建与 doctor
 
@@ -60,18 +60,6 @@ node /absolute/path/to/macos-computer-use-mcp/src/server.mjs
 ```
 
 `npm run doctor` 向已构建的 helper 查询状态并打印 JSON。它不会弹出权限请求，也不会授予权限。最后一条命令启动 MCP stdio 服务并等待客户端 JSON-RPC。它不是交互式 shell，stdout 只保留协议输出。`npm start` 运行同一个 `src/server.mjs` 入口。构建会拒绝覆盖仍在运行的 helper；先关闭其客户端，或另选 `CU_BUILD_DIRECTORY`。
-
-## 容器宿主机 Broker
-
-若希望 Swift helper 留在 macOS，而 MCP 服务器与 JS worker 在 Docker 中运行：
-
-```sh
-npm run build
-npm run docker:build
-npm run container-host
-```
-
-`container-host` 在本机启动回环 broker，用 `CU_BROKER_URL` / `CU_BROKER_TOKEN` 拉起受限镜像，并让 MCP stdio 仍走宿主机进程。镜像只含 `src/` 与生产 Node 依赖——没有 Swift 二进制、没有宿主机挂载、没有额外权限。也可使用长驻 broker：`npm run broker -- --token-file ~/.config/macos-computer-use/broker.token`。架构、生命周期与遗留安全局限见 [ARCHITECTURE.md](../ARCHITECTURE.md#container-host-broker)（仅英文）。
 
 ## MCP 客户端配置
 

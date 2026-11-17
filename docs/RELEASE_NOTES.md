@@ -1,13 +1,3 @@
-# v2.0.0 — container host broker
-
-[中文版本](zh-CN/RELEASE_NOTES.md)
-
-The MCP server and JS worker can run in a locked-down Docker image while the Swift helper stays on macOS. A host broker authenticates one container session, re-validates native methods, and ties helper lifetime to disconnect, release, lease expiry, cancel, timeout and helper crash — without changing the public `js` / `js_reset` tools or the REPL contract. Local `Bridge` spawn remains the default when `CU_BROKER_URL` is unset.
-
-Acceptance: portable broker regression and failure-recovery tests (auth, busy session, policy deny, cancel/timeout SIGTERM, disconnect, lease expiry, helper crash, stale ids, RemoteBridge + CuaRepl), container run-argument hardening checks, and the existing portable suite. Full Docker e2e against a live desktop is optional and not required for this gate. Remaining isolation limits are listed in [ARCHITECTURE.md](ARCHITECTURE.md#remaining-security-limitations). Goal tag: `2.0/goal`.
-
----
-
 # v1.3.0 — target-aware cursor visibility
 
 [中文版本](zh-CN/RELEASE_NOTES.md)
