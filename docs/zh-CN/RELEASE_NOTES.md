@@ -1,3 +1,13 @@
+# v2.0.0 — 容器宿主机 Broker
+
+[English version](../RELEASE_NOTES.md)
+
+MCP 服务器与 JS worker 可在受限 Docker 镜像中运行，Swift helper 仍留在 macOS。宿主机 broker 认证单个容器会话，重新校验原生方法，并把 helper 生命周期绑定到断连、release、租约过期、取消、超时与 helper 崩溃——不改变公开的 `js` / `js_reset` 工具或 REPL 约定。未设置 `CU_BROKER_URL` 时仍默认本地 `Bridge` spawn。
+
+验收：可移植的 broker 回归与故障恢复测试（认证、忙会话、策略拒绝、取消/超时 SIGTERM、断连、租约过期、helper 崩溃、过期 id、RemoteBridge + CuaRepl）、容器运行参数加固检查，以及既有可移植套件。针对真实桌面的完整 Docker e2e 可选，不是本门槛要求。遗留隔离局限见 [ARCHITECTURE.md](../ARCHITECTURE.md#remaining-security-limitations)。目标标签：`2.0/goal`。
+
+---
+
 # v1.3.0 — 跟随目标遮挡的光标可见性
 
 [English version](../RELEASE_NOTES.md)
