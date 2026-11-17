@@ -10,7 +10,7 @@ English is the default language for this repository's documentation. Chinese tra
 | --- | --- |
 | [../README.md](../README.md) | positioning, requirements, MCP client setup, persistent REPL, limits |
 | [JS_API.md](JS_API.md) | the two MCP entries, `cua`/app methods, coordinates, cursor and screenshots |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | process layering and the independent implementation |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | process layering, container host broker, and security limitations |
 | [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) | current checkpoint plus the v1.0 delivery checkpoints |
 
 ## Evidence and validation
@@ -48,7 +48,7 @@ English is the default language for this repository's documentation. Chinese tra
 
 | Document | What it covers |
 | --- | --- |
-| [RELEASE_NOTES.md](RELEASE_NOTES.md) | v1.1–v1.3 notes plus retained v1.0 and v0.3 notes |
+| [RELEASE_NOTES.md](RELEASE_NOTES.md) | v2.0 container broker plus retained v1.x and v0.3 notes |
 | [REPL_CURSOR_PLAN.md](REPL_CURSOR_PLAN.md) | the acceptance plan that produced v1.0 |
 | [WORKLOG.md](WORKLOG.md) | chronological work log (English only) |
 

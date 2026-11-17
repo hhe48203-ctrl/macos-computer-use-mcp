@@ -42,11 +42,11 @@ Building from this checkout needs:
 - macOS 14.4 or later, plus Xcode Command Line Tools, to compile the Swift helper
 - Node.js 22 or later to run the MCP server. The development checks use Node.js 22.13 or later on the 22.x line, or Node.js 24 or later.
 
-Recorded verification is macOS 26.6.2 arm64 with Node.js 24.15.0. Other operating systems and architectures are not machine-verified. `npm run package` can produce a local plugin ZIP that needs macOS and Node.js and does not need a compiler or `npm install`. This repository has tags `v1.0.0` through `v1.3.0` and does not publish GitHub Releases. Acceptance of those local packages is in [validation](docs/VALIDATION.md).
+Recorded verification is macOS 26.6.2 arm64 with Node.js 24.15.0. Other operating systems and architectures are not machine-verified. `npm run package` can produce a local plugin ZIP that needs macOS and Node.js and does not need a compiler or `npm install`. This repository has tags `v1.0.0` through `v1.3.0` and the container-broker goal tag `2.0/goal`; it does not publish GitHub Releases. Acceptance of those local packages is in [validation](docs/VALIDATION.md).
 
 Grant Accessibility and Screen Recording in System Settings to the terminal, agent, or helper that actually launches the server. This project cannot change the TCC database for you. After the launch chain changes, run doctor again.
 
-The server process has the desktop privileges of the user who started it. It is a trusted local Node.js process, not a security sandbox, and it should only evaluate JavaScript from an agent you trust.
+The server process has the desktop privileges of the user who started it. It is a trusted local Node.js process, not a security sandbox, and it should only evaluate JavaScript from an agent you trust. The optional Docker path isolates the MCP/REPL Node process from host files and the Swift helper; see [Container host broker](#container-host-broker) and the limitations in [architecture](docs/ARCHITECTURE.md#remaining-security-limitations).
 
 ## Install, build, and doctor
 
@@ -60,6 +60,18 @@ node /absolute/path/to/macos-computer-use-mcp/src/server.mjs
 ```
 
 `npm run doctor` asks the built helper for status and prints JSON. It does not prompt for, or grant, permissions. The last command starts the MCP stdio server and waits for client JSON-RPC. It is not an interactive shell, and stdout stays protocol-only. `npm start` runs the same `src/server.mjs` entry. The build refuses to replace a helper that is still running; close that client or choose another `CU_BUILD_DIRECTORY`.
+
+## Container host broker
+
+To keep the Swift helper on macOS while the MCP server and JS worker run in Docker:
+
+```sh
+npm run build
+npm run docker:build
+node src/container-host.mjs
+```
+
+`container-host` starts a loopback host broker, spawns the locked-down image with `CU_BROKER_URL` / `CU_BROKER_TOKEN`, and keeps MCP stdio on the host process. The image contains only `src/` and production Node dependencies — no Swift binary, no host mounts, no capabilities. In Docker, Node's Permission Model denies child-process creation from the REPL and prevents creating nested workers; the host's direct `npm start` path is unchanged. **This is defense-in-depth, not a security boundary against malicious JS**: Node Worker Threads share a process, and the broker credential is still held inside it. A long-lived broker is also available as `npm run broker -- --token-file ~/.config/macos-computer-use/broker.token`. Architecture, lifecycle and remaining security limitations are in [ARCHITECTURE.md](docs/ARCHITECTURE.md#container-host-broker).
 
 ## MCP client configuration
 
