@@ -12,9 +12,8 @@
 
 ## Code map and invariants
 
-- `src/server.mjs` exposes `js` and `js_reset` over MCP stdio. Keep stdout reserved for protocol traffic. With `CU_BROKER_URL` it uses `RemoteBridge`; otherwise it uses local `Bridge`.
-- `src/repl.mjs` and `src/repl-worker.mjs` own evaluation and session lifetime. `src/bridge.mjs` supervises the Swift helper on the host. `src/broker.mjs` and `src/remote-bridge.mjs` are the container split: the broker owns helper lifetime, auth, policy and lease expiry; the container never spawns the helper. Cancellation, timeout, reset, disconnect and lease expiry must retire pending native work. After an interrupted mutation, observe the target again before retrying.
-- `src/container-host.mjs` and `Dockerfile` package the Node MCP server for a locked-down container while the helper stays on macOS. Prefer that path over bind-mounting the host into the container.
+- `src/server.mjs` exposes `js` and `js_reset` over MCP stdio. Keep stdout reserved for protocol traffic.
+- `src/repl.mjs` and `src/repl-worker.mjs` own evaluation and session lifetime. `src/bridge.mjs` supervises the Swift helper. Cancellation, timeout, and reset must retire pending native work. After an interrupted mutation, observe the target again before retrying.
 - `src/cua.mjs` implements app/window bindings and coordinate handling. `src/tools.mjs` validates native requests. Reject ambiguous targets and stale snapshots or coordinates. Keep behavior aligned with the [JS API](docs/JS_API.md).
 - `native/` owns macOS Accessibility, capture, input, and the cursor overlay. Preserve background routing by default, require explicit foreground opt-in, and use normal macOS permission grants. See [architecture](docs/ARCHITECTURE.md).
 

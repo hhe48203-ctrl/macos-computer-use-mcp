@@ -12,9 +12,8 @@
 
 ## 代码导航与约束
 
-- `src/server.mjs` 通过 MCP stdio 提供 `js` 和 `js_reset`。stdout 只承载协议流量。设置 `CU_BROKER_URL` 时使用 `RemoteBridge`，否则使用本地 `Bridge`。
-- `src/repl.mjs` 和 `src/repl-worker.mjs` 管理执行与会话生命周期。`src/bridge.mjs` 在宿主机上管理 Swift helper。`src/broker.mjs` 与 `src/remote-bridge.mjs` 负责容器拆分：broker 拥有 helper 生命周期、认证、策略与租约过期；容器不得直接 spawn helper。取消、超时、reset、断连与租约过期都必须终止待处理的原生操作。修改操作中断后，先重新观察目标再重试。
-- `src/container-host.mjs` 与 `Dockerfile` 将 Node MCP 服务器打包进受限容器，helper 仍留在 macOS。优先使用该路径，不要把宿主机目录挂进容器。
+- `src/server.mjs` 通过 MCP stdio 提供 `js` 和 `js_reset`。stdout 只承载协议流量。
+- `src/repl.mjs` 和 `src/repl-worker.mjs` 管理执行与会话生命周期。`src/bridge.mjs` 管理 Swift helper。取消、超时和 reset 必须终止待处理的原生操作。修改操作中断后，先重新观察目标再重试。
 - `src/cua.mjs` 实现应用和窗口绑定及坐标处理。`src/tools.mjs` 校验原生请求。拒绝有歧义的目标、过期的快照和失效的坐标，并保持行为与 [JS API](JS_API.md) 一致。
 - `native/` 负责 macOS Accessibility、截图、输入和光标覆盖层。保留默认后台路由，显式启用前台操作，并通过 macOS 正常授予权限。见[架构](../ARCHITECTURE.md)。
 

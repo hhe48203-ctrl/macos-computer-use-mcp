@@ -10,7 +10,7 @@
 | --- | --- |
 | [../README.md](../../README.md) | 定位、环境要求、MCP 客户端、持久 REPL、限制 |
 | [JS_API.md](JS_API.md) | 两个 MCP 入口、`cua`/应用方法、坐标、光标与截图 |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | 进程分层、容器宿主机 broker 与安全局限（仅英文） |
+| [ARCHITECTURE.md](../ARCHITECTURE.md) | 进程分层与独立实现（仅英文） |
 | [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) | 当前检查点、剩余工作与 v1.0 交付检查点 |
 
 ## 证据与验证
@@ -48,7 +48,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
-| [RELEASE_NOTES.md](RELEASE_NOTES.md) | v2.0 容器 broker 发布说明，以及保留的 v1.x 与 v0.3 说明 |
+| [RELEASE_NOTES.md](RELEASE_NOTES.md) | v1.1–v1.3 发布说明，以及保留的 v1.0 与 v0.3 说明 |
 | [REPL_CURSOR_PLAN.md](REPL_CURSOR_PLAN.md) | 产出 v1.0 的验收计划 |
 | [WORKLOG.md](../WORKLOG.md) | 按时间顺序的工作日志（仅英文） |
 
