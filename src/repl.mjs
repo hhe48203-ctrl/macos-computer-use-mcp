@@ -1,6 +1,18 @@
 import { Worker } from 'node:worker_threads';
 import { NativeError } from './bridge.mjs';
 
+/**
+ * The Docker Node process runs under --permission and can create the REPL
+ * worker, but the worker must NOT inherit --allow-worker or any process-
+ * spawning grants. Passing execArgv: [] silently drops permission flags.
+ *
+ * Local (non-permissioned) development retains its existing behavior.
+ */
+export function replWorkerExecArgv(parentArgv = process.execArgv) {
+  if (!parentArgv.includes('--permission')) return [];
+  return parentArgv.filter(flag => flag === '--permission' || flag.startsWith('--allow-fs-read='));
+}
+
 const fault=(code,message)=>new NativeError(code,message);
 export class CuaRepl {
   constructor(bridge,{workerURL=new URL('./repl-worker.mjs',import.meta.url),maxOutputBytes=8*1024*1024}={}) {
@@ -10,7 +22,7 @@ export class CuaRepl {
   start() {
     if(this.closed)throw fault('REPL_CLOSED','REPL is closed');
     if(this.worker)return;
-    const worker=new Worker(this.workerURL,{stdout:true,stderr:true,execArgv:[],resourceLimits:{maxOldGenerationSizeMb:256}});this.worker=worker;
+    const worker=new Worker(this.workerURL,{stdout:true,stderr:true,execArgv:replWorkerExecArgv(),resourceLimits:{maxOldGenerationSizeMb:256}});this.worker=worker;
     const output=text=>{if(this.active)this.output({type:'text',text:String(text)},this.active.id);};
     worker.stdout.on('data',output);worker.stderr.on('data',output);
     worker.on('message',message=>{
