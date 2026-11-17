@@ -40,9 +40,9 @@ test('permissioned persistent REPL denies child-process APIs and keeps reset sem
     '--input-type=module', '--eval', probe
   ], { encoding: 'utf8', timeout: 20000 });
   assert.equal(processResult.status, 0, processResult.stderr || processResult.error?.message);
-  const payload = JSON.parse(processResult.stdout.trim().split('\\n').at(-1));
+  const payload = JSON.parse(processResult.stdout.trim().split(String.fromCharCode(10)).at(-1));
   assert.equal(payload.check.isError, undefined, JSON.stringify(payload.check));
-  const output = payload.check.content.map(x => x.text ?? '').join('\\n');
+  const output = payload.check.content.map(x => x.text ?? '').join(' ');
   for (const name of ['spawn', 'spawnSync', 'execFile', 'fork']) {
     assert.ok(output.includes(`${name}:ERR_ACCESS_DENIED`), output);
   }
