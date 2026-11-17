@@ -12,7 +12,7 @@ test('REPL Worker inherits only read permissions, not process or worker grants',
   ]), ['--permission', '--allow-fs-read=/app']);
 });
 
-test('permissioned persistent REPL denies child-process APIs and keeps reset semantics', () => {
+test('permissioned persistent REPL denies child processes and nested workers and keeps reset semantics', () => {
   const root = fileURLToPath(new URL('../', import.meta.url));
   const replUrl = new URL('../src/repl.mjs', import.meta.url).href;
   const probe = `
@@ -27,6 +27,12 @@ test('permissioned persistent REPL denies child-process APIs and keeps reset sem
           try { cp[name](process.execPath, ['--version']); outcomes.push(name + ':ALLOWED'); }
           catch (error) { outcomes.push(name + ':' + error.code); }
         }
+        var workerThreads = await import('node:worker_threads');
+        try {
+          var nested = new workerThreads.Worker('', { eval: true });
+          await nested.terminate();
+          outcomes.push('Worker:ALLOWED');
+        } catch (error) { outcomes.push('Worker:' + error.code); }
         nodeRepl.write(JSON.stringify(outcomes));
       \`, { timeoutMs: 5000 });
       const persistent = await runtime.execute('outcomes.length', { timeoutMs: 5000 });
@@ -43,9 +49,9 @@ test('permissioned persistent REPL denies child-process APIs and keeps reset sem
   const payload = JSON.parse(processResult.stdout.trim().split(String.fromCharCode(10)).at(-1));
   assert.equal(payload.check.isError, undefined, JSON.stringify(payload.check));
   const output = payload.check.content.map(x => x.text ?? '').join(' ');
-  for (const name of ['spawn', 'spawnSync', 'execFile', 'fork']) {
+  for (const name of ['spawn', 'spawnSync', 'execFile', 'fork', 'Worker']) {
     assert.ok(output.includes(`${name}:ERR_ACCESS_DENIED`), output);
   }
-  assert.ok(payload.persistent.content.some(x => x.text?.includes('4')));
+  assert.ok(payload.persistent.content.some(x => x.text === '5'));
   assert.ok(payload.cleared.content.some(x => x.text?.includes('undefined')));
 });
