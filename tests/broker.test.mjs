@@ -79,7 +79,7 @@ test('cancel and timeout stop the helper with SIGTERM and fence queued work', as
   } finally { await fx.close(); }
 });
 
-test('container disconnect and release revoke the session and kill in-flight native work', async () => {
+test('explicit release revokes the session and kills in-flight native work', async () => {
   const fx = await startBroker();
   try {
     const client = fx.client();
@@ -97,6 +97,21 @@ test('container disconnect and release revoke the session and kill in-flight nat
     const after = fx.helperPids().at(-1);
     assert.notEqual(after, before);
     next.close();
+  } finally { await fx.close(); }
+});
+
+test('a connection closing without release retires an in-flight helper', async () => {
+  const fx = await startBroker({ leaseMs: 20000 });
+  try {
+    const raw = rawClient(fx.port);
+    assert.ok(await raw.next(m => m.type === 'ready'));
+    raw.send({ id: 1, method: 'cursor_hide', params: {} });
+    await until(() => fx.events().some(([e]) => e === 'call:cursor_hide'));
+    const pid = fx.helperPids().at(-1);
+    assert.ok(alive(pid));
+    raw.socket.destroy();
+    await until(() => !alive(pid), 4000, 'helper exit before lease expiry');
+    assert.equal(fx.broker.session, null);
   } finally { await fx.close(); }
 });
 
@@ -129,7 +144,7 @@ test('helper crash revokes the broker session; a fresh client can observe again'
   } finally { await fx.close(); }
 });
 
-test('stale or concurrent request ids revoke the session', async () => {
+test('stale request ids revoke the session', async () => {
   const fx = await startBroker();
   try {
     const raw = rawClient(fx.port);
@@ -141,6 +156,41 @@ test('stale or concurrent request ids revoke the session', async () => {
     assert.equal(revoked.error.code, 'STALE_REQUEST');
     await raw.waitClosed();
   } finally { await fx.close(); }
+});
+
+test('a second outstanding request revokes the session before reaching the helper', async () => {
+  const fx = await startBroker();
+  try {
+    const raw = rawClient(fx.port);
+    assert.ok(await raw.next(m => m.type === 'ready'));
+    raw.send({ id: 1, method: 'cursor_hide', params: {} });
+    await until(() => fx.events().some(([e]) => e === 'call:cursor_hide'));
+    const pid = fx.helperPids().at(-1);
+    raw.send({ id: 2, method: 'apps', params: {} });
+    const revoked = await raw.next(m => m.type === 'revoked');
+    assert.equal(revoked?.error.code, 'PROTOCOL_VIOLATION');
+    await raw.waitClosed();
+    await until(() => !alive(pid), 4000, 'helper exit after protocol violation');
+    assert.ok(!fx.events().some(([e]) => e === 'call:apps'));
+  } finally { await fx.close(); }
+});
+
+test('CuaRepl reset waits for host helper exit over a graceful broker release', async () => {
+  const fx = await startBroker({ helperShutdownDelayMs: 400 });
+  const runtime = new CuaRepl(fx.client());
+  try {
+    assert.ok(!(await runtime.execute('await cua.listApps({emit:false})')).isError);
+    const pid = fx.helperPids().at(-1);
+    assert.ok(alive(pid));
+    await runtime.reset();
+    assert.ok(!alive(pid), 'reset returned before the host helper exited');
+    assert.equal(fx.broker.session, null);
+    assert.ok(!(await runtime.execute('await cua.listApps({emit:false})')).isError);
+    assert.notEqual(fx.helperPids().at(-1), pid);
+  } finally {
+    await runtime.close();
+    await fx.close();
+  }
 });
 
 test('CuaRepl timeout and reset through RemoteBridge preserve the Bridge lifecycle contract', async () => {

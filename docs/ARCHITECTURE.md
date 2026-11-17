@@ -50,6 +50,7 @@ Invariants for this split:
 
 - One authenticated broker session at a time; a second client receives `BROKER_BUSY`.
 - The session owns the helper. Disconnect, `release`, lease expiry, helper crash, cancel, timeout, or broker shutdown revoke the session and stop the helper with the same SIGTERM then SIGKILL path as local `Bridge.stop()`.
+- For a graceful `release`, the broker keeps its side of the connection open until the helper exits. The client can then finish `js_reset`.
 - Request ids are monotonic per session; replay or a second outstanding native request revokes the session.
 - The host re-validates every method against `brokerMethods` / `createPolicy` (optional deny list). The container never receives the helper executable path or host credentials.
 - `src/container-host.mjs` starts an ephemeral broker token, listens locally, and runs the image with `--read-only`, no bind mounts, dropped capabilities, `no-new-privileges`, a non-root user, and resource limits. The token is passed by env name so it does not appear on the `docker` argv. Standalone `node src/broker.mjs --token-file …` remains available for a long-lived host broker.

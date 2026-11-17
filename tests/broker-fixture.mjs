@@ -11,7 +11,12 @@ import * as protocol from '../src/broker-protocol.mjs';
 // cursor_hide hangs, request_permissions crashes, focus fails; other methods echo the helper PID.
 const helperSource = `
 const fs=require('node:fs');const log=m=>fs.appendFileSync(process.env.CU_FAKE_LOG,m+' '+process.pid+'\\n');log('start');
-process.on('SIGTERM',()=>{log('sigterm');process.exit(0);});
+process.on('SIGTERM',()=>{
+  log('sigterm');
+  const delay=Number(process.env.CU_FAKE_SHUTDOWN_DELAY_MS);
+  if(delay>0)setTimeout(()=>process.exit(0),delay);
+  else process.exit(0);
+});
 require('node:readline').createInterface({input:process.stdin}).on('line',l=>{const r=JSON.parse(l);log('call:'+r.method);
   if(r.method==='cursor_hide')return;
   if(r.method==='request_permissions')process.exit(3);
@@ -26,12 +31,14 @@ export async function until(predicate, timeoutMs = 4000, message = 'condition') 
 }
 export const alive = pid => { try { process.kill(pid, 0); return true; } catch { return false; } };
 
-export async function startBroker({ helperTimeoutMs = 30000, deny = [], ...options } = {}) {
+export async function startBroker({ helperTimeoutMs = 30000, helperShutdownDelayMs = 0, deny = [], ...options } = {}) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'cu-broker-test-'));
   const executable = path.join(dir, 'helper');
   const log = path.join(dir, 'helper.log');
   writeFileSync(executable, `#!${process.execPath}\n${helperSource}`, { mode: 0o700 });
-  const bridge = new Bridge({ executable, env: { ...process.env, CU_FAKE_LOG: log }, timeoutMs: helperTimeoutMs });
+  const bridge = new Bridge({ executable, env: {
+    ...process.env, CU_FAKE_LOG: log, CU_FAKE_SHUTDOWN_DELAY_MS: String(helperShutdownDelayMs)
+  }, timeoutMs: helperTimeoutMs });
   const broker = new HostBroker({ token, bridge, policy: createPolicy({ deny }), ...options });
   const { port } = await broker.listen();
   const events = () => existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(l => l.split(' ')) : [];

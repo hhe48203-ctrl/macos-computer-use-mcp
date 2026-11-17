@@ -51,7 +51,7 @@ export class HostBroker {
     this.handshakes = new Set();
     this.connections = new Set();
     this.closed = false;
-    this.server = net.createServer(socket => this.#accept(socket));
+    this.server = net.createServer({ allowHalfOpen: true }, socket => this.#accept(socket));
     this.server.on('error', error => this.log(`broker server error: ${error.message}`));
   }
   listen() {
@@ -92,11 +92,20 @@ export class HostBroker {
       () => connection.session ? this.#revoke(connection.session, fault('FRAME_TOO_LARGE', 'Broker request frame exceeded its size limit')) : socket.destroy()
     ));
     socket.on('error', () => {});
+    const disconnect = () => {
+      if (connection.session) this.#revoke(connection.session, fault('SESSION_DISCONNECTED', 'Container connection closed; native work stopped'), { notify: false });
+    };
+    // Hold our side open until retirement when the client sends release and FIN.
+    // A bare FIN must also revoke the session now that Node no longer closes both sides.
+    socket.on('end', () => {
+      if (!connection.session) socket.destroy();
+      else disconnect();
+    });
     socket.on('close', () => {
       clearTimeout(connection.timer);
       this.handshakes.delete(connection);
       this.connections.delete(connection);
-      if (connection.session) this.#revoke(connection.session, fault('SESSION_DISCONNECTED', 'Container connection closed; native work stopped'), { notify: false });
+      disconnect();
     });
     socket.write(protocol.frame({ type: 'challenge', version: protocol.protocolVersion, nonce: connection.nonce }));
   }
