@@ -68,7 +68,7 @@ node /absolute/path/to/macos-computer-use-mcp/src/server.mjs
 ```sh
 npm run build
 npm run docker:build
-npm run container-host
+node src/container-host.mjs
 ```
 
 `container-host` 在本机启动回环 broker，用 `CU_BROKER_URL` / `CU_BROKER_TOKEN` 拉起受限镜像，并让 MCP stdio 仍走宿主机进程。镜像只含 `src/` 与生产 Node 依赖——没有 Swift 二进制、没有宿主机挂载、没有额外权限。也可使用长驻 broker：`npm run broker -- --token-file ~/.config/macos-computer-use/broker.token`。架构、生命周期与遗留安全局限见 [ARCHITECTURE.md](../ARCHITECTURE.md#container-host-broker)（仅英文）。

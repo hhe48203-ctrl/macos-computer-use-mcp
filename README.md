@@ -68,7 +68,7 @@ To keep the Swift helper on macOS while the MCP server and JS worker run in Dock
 ```sh
 npm run build
 npm run docker:build
-npm run container-host
+node src/container-host.mjs
 ```
 
 `container-host` starts a loopback host broker, spawns the locked-down image with `CU_BROKER_URL` / `CU_BROKER_TOKEN`, and keeps MCP stdio on the host process. The image contains only `src/` and production Node dependencies — no Swift binary, no host mounts, no capabilities. In Docker, Node's Permission Model denies child-process creation from the REPL and prevents creating nested workers; the host's direct `npm start` path is unchanged. **This is defense-in-depth, not a security boundary against malicious JS**: Node Worker Threads share a process, and the broker credential is still held inside it. A long-lived broker is also available as `npm run broker -- --token-file ~/.config/macos-computer-use/broker.token`. Architecture, lifecycle and remaining security limitations are in [ARCHITECTURE.md](docs/ARCHITECTURE.md#container-host-broker).
