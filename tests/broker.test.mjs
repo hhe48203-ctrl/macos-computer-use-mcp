@@ -117,19 +117,25 @@ test('a connection closing without release retires an in-flight helper', async (
 
 test('lease expiry without heartbeats stops native work without an explicit cancel', async () => {
   const fx = await startBroker({ heartbeatMs: 100, leaseMs: 800 });
+  let heartbeat;
   try {
     const raw = rawClient(fx.port);
     await raw.next(m => m.type === 'ready');
+    heartbeat = setInterval(() => raw.send({ type: 'ping' }), 100);
     raw.send({ id: 1, method: 'cursor_hide', params: {} });
     await until(() => fx.events().some(([e]) => String(e).includes('cursor_hide')), 4000, 'hanging call accepted');
     const before = fx.helperPids().at(-1);
     assert.ok(alive(before));
     // Stay silent (no pings). The host lease must retire the helper without an explicit cancel.
+    clearInterval(heartbeat);
     await until(() => fx.broker.session === null, 4000, 'lease expiry');
     await until(() => !alive(before), 4000, 'helper killed after lease expiry');
     assert.ok(raw.frames.some(m => m.type === 'revoked' && m.error?.code === 'SESSION_EXPIRED'));
     await raw.waitClosed();
-  } finally { await fx.close(); }
+  } finally {
+    clearInterval(heartbeat);
+    await fx.close();
+  }
 });
 
 test('helper crash revokes the broker session; a fresh client can observe again', async () => {
