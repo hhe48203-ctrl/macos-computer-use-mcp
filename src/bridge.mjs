@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
@@ -10,8 +11,9 @@ export class NativeError extends Error {
 }
 
 /** One persistent helper owns AX references. Requests serialize across all tools. */
-export class Bridge {
+export class Bridge extends EventEmitter {
   constructor({ executable = defaultBridgePath, env = process.env, timeoutMs = 30000 } = {}) {
+    super();
     this.executable = executable;
     this.env = env;
     this.timeoutMs = timeoutMs;
@@ -47,7 +49,10 @@ export class Bridge {
     child.on('error', error => { if (this.child === child) this.stop(new NativeError('BRIDGE_START_FAILED', error.message)); });
     child.on('exit', (code, signal) => {
       lines.close();
-      if (this.child === child) this.stop(new NativeError('BRIDGE_EXITED', `Native bridge exited (${signal ?? code}); take a new snapshot. No action was retried.`));
+      if (this.child !== child) return;
+      const error = new NativeError('BRIDGE_EXITED', `Native bridge exited (${signal ?? code}); take a new snapshot. No action was retried.`);
+      this.stop(error);
+      this.emit('helperExit', error);
     });
     child.stdin.on('error', error => { if (this.child === child) this.stop(new NativeError('BRIDGE_PIPE_FAILED', error.message)); });
   }

@@ -117,19 +117,25 @@ test('a connection closing without release retires an in-flight helper', async (
 
 test('lease expiry without heartbeats stops native work without an explicit cancel', async () => {
   const fx = await startBroker({ heartbeatMs: 100, leaseMs: 800 });
+  let heartbeat;
   try {
     const raw = rawClient(fx.port);
     await raw.next(m => m.type === 'ready');
+    heartbeat = setInterval(() => raw.send({ type: 'ping' }), 100);
     raw.send({ id: 1, method: 'cursor_hide', params: {} });
     await until(() => fx.events().some(([e]) => String(e).includes('cursor_hide')), 4000, 'hanging call accepted');
     const before = fx.helperPids().at(-1);
     assert.ok(alive(before));
     // Stay silent (no pings). The host lease must retire the helper without an explicit cancel.
+    clearInterval(heartbeat);
     await until(() => fx.broker.session === null, 4000, 'lease expiry');
     await until(() => !alive(before), 4000, 'helper killed after lease expiry');
     assert.ok(raw.frames.some(m => m.type === 'revoked' && m.error?.code === 'SESSION_EXPIRED'));
     await raw.waitClosed();
-  } finally { await fx.close(); }
+  } finally {
+    clearInterval(heartbeat);
+    await fx.close();
+  }
 });
 
 test('helper crash revokes the broker session; a fresh client can observe again', async () => {
@@ -140,6 +146,29 @@ test('helper crash revokes the broker session; a fresh client can observe again'
     await until(() => fx.broker.session === null, 4000, 'session cleared after helper exit');
     const next = fx.client();
     assert.deepEqual(await next.request('apps'), { apps: [] });
+    next.close();
+  } finally { await fx.close(); }
+});
+
+test('an idle helper crash revokes its session before any further request', async () => {
+  const fx = await startBroker({ leaseMs: 20000 });
+  try {
+    const raw = rawClient(fx.port);
+    await raw.next(m => m.type === 'ready');
+    raw.send({ id: 1, method: 'apps', params: {} });
+    assert.deepEqual((await raw.next(m => m.id === 1))?.result, { apps: [] });
+    const oldPid = fx.helperPids().at(-1);
+    assert.equal(fx.broker.session?.pending, null);
+
+    process.kill(oldPid, 'SIGKILL');
+    const revoked = await raw.next(m => m.type === 'revoked');
+    assert.equal(revoked?.error.code, 'BRIDGE_EXITED');
+    assert.equal(fx.broker.session, null);
+
+    const next = fx.client();
+    assert.deepEqual(await next.request('apps'), { apps: [] });
+    assert.ok(!alive(oldPid));
+    assert.notEqual(fx.helperPids().at(-1), oldPid);
     next.close();
   } finally { await fx.close(); }
 });
@@ -189,6 +218,32 @@ test('CuaRepl reset waits for host helper exit over a graceful broker release', 
     assert.notEqual(fx.helperPids().at(-1), pid);
   } finally {
     await runtime.close();
+    await fx.close();
+  }
+});
+
+test('a client-side socket deadline does not let new native work overtake helper exit', async () => {
+  const fx = await startBroker({ helperShutdownDelayMs: 10000 });
+  const first = fx.client({ retireMs: 10 });
+  const next = fx.client();
+  try {
+    assert.deepEqual(await first.request('apps'), { apps: [] });
+    const oldPid = fx.helperPids().at(-1);
+    first.stop();
+    await first.retiring;
+    await until(() => fx.broker.session === null, 4000, 'broker revokes the released session');
+    assert.ok(alive(oldPid), 'the client deadline should expire before the host exits');
+
+    await next.start();
+    assert.deepEqual(await next.request('windows'), { windows: [] });
+    assert.ok(!alive(oldPid));
+    const newPid = fx.helperPids().at(-1);
+    assert.notEqual(newPid, oldPid);
+    assert.ok(fx.events().some(([event, pid]) => event === 'sigterm' && Number(pid) === oldPid));
+    assert.ok(!fx.events().some(([event, pid]) => event === 'call:windows' && Number(pid) === oldPid));
+  } finally {
+    first.close();
+    next.close();
     await fx.close();
   }
 });

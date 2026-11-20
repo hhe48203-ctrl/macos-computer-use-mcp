@@ -133,8 +133,8 @@ export class RemoteBridge {
       const pending = this.pending; this.pending = null;
       clearTimeout(pending.timer); pending.reject(error);
     }
-    // Releasing the session makes the broker stop the helper (SIGTERM, then
-    // SIGKILL) before it closes the socket, so close marks helper retirement.
+    // The broker closes its side after helper exit on graceful release.
+    // A local socket deadline or transport failure can close this side sooner.
     if (socket && !socket.destroyed) {
       this.retiring = new Promise(resolve => {
         const timer = setTimeout(() => socket.destroy(), this.retireMs);

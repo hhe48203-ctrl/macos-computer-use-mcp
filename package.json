@@ -21,6 +21,7 @@
     "lint": "eslint \"src/**/*.{js,mjs}\"",
     "check": "npm run lint && node scripts/check.mjs",
     "check:native": "CU_BUILD_DIRECTORY=.build npm run build && node scripts/check.mjs --native",
+    "check:tla": "sh scripts/check-lifecycle-model.sh",
     "test:desktop": "node scripts/repl-desktop-test.mjs",
     "test:pi": "node scripts/pi-test.mjs",
     "package": "node scripts/package.mjs",

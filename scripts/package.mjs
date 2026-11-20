@@ -9,6 +9,13 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { parse as parseYaml } from 'yaml';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const identity = JSON.parse(readFileSync(path.join(root, 'plugin.json')));
+function copyLifecycleModel(destination) {
+  const directory = path.join(destination, 'formal');
+  mkdirSync(directory, { recursive: true });
+  for (const file of ['Lifecycle.tla', 'Local.cfg', 'Broker.cfg']) {
+    cpSync(path.join(root, 'formal', file), path.join(directory, file));
+  }
+}
 if (identity.$schema !== 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json') throw new Error('Invalid plugin manifest schema');
 if (identity.extensions['com.openai'].interface.shortDescription.length > 30) throw new Error('Plugin subtitle exceeds 30 characters');
 const mcp = JSON.parse(readFileSync(path.join(root, 'mcp.json')));
@@ -25,6 +32,7 @@ const canonical=p=>{try{return realpathSync(p)}catch{return path.resolve(p)}};
 if(running.status!==0||running.stdout.split('\n').some(line=>canonical(line.trim().replace(/^\d+\s+/,'')).startsWith(canonical(staging)+'/')))throw Error('A staged plugin executable may be running; no staging files were replaced. Close that client before packaging.');
 rmSync(staging, { recursive: true, force: true }); mkdirSync(path.join(destination, 'src'), { recursive: true });
 for (const file of ['plugin.json', 'mcp.json', 'AGENTS.md', 'LICENSE', 'skills', 'docs', 'examples']) cpSync(path.join(root, file), path.join(destination, file), { recursive: true });
+copyLifecycleModel(destination);
 const helper = path.join(root, '.build/Local Computer Use.app');
 if (!existsSync(helper)) throw new Error('Run npm run build before packaging');
 cpSync(helper, path.join(destination, '.build/Local Computer Use.app'), { recursive: true });
@@ -84,6 +92,7 @@ try {
 const sourceStage = path.join(dist, 'source'); rmSync(sourceStage, { recursive: true, force: true });
 const sourceRoot = path.join(sourceStage, identity.name); mkdirSync(sourceRoot, { recursive: true });
 for (const file of ['package.json', 'package-lock.json', 'eslint.config.mjs', 'plugin.json', 'mcp.json', 'AGENTS.md', 'README.md', 'LICENSE', '.gitignore', 'src', 'native', 'scripts', 'tests', 'docs', 'examples', 'skills']) cpSync(path.join(root, file), path.join(sourceRoot, file), { recursive: true });
+copyLifecycleModel(sourceRoot);
 const sourceTar = path.join(dist, `${name}-source.tar.gz`);
 run('/usr/bin/tar', ['-czf', sourceTar, '-C', sourceStage, identity.name]);
 const artifactManifest = [pluginZip, sourceTar].map(file => ({ file: path.basename(file), bytes: readFileSync(file).length, sha256: createHash('sha256').update(readFileSync(file)).digest('hex') }));
