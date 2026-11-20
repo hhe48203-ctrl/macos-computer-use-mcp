@@ -15,6 +15,6 @@ cd "$work"
 
 for config in Local Broker; do
     java -XX:+UseParallelGC -Xmx2g -Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet \
-        -cp "$jar" tlc2.TLC -fp 0 -workers 1 -lncheck final \
+        -cp "$jar" tlc2.TLC -fp 0 -fpbits 8 -workers 1 -lncheck final \
         -config "$config.cfg" -metadir "$work/$config" Lifecycle.tla
 done
