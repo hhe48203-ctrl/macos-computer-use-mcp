@@ -53,6 +53,9 @@ export class HostBroker {
     this.closed = false;
     this.server = net.createServer({ allowHalfOpen: true }, socket => this.#accept(socket));
     this.server.on('error', error => this.log(`broker server error: ${error.message}`));
+    // The request error path cannot see an unexpected exit between requests.
+    this.onHelperExit = error => { if (this.active) this.#revoke(this.active, error); };
+    this.bridge.on('helperExit', this.onHelperExit);
   }
   listen() {
     return new Promise((resolve, reject) => {
@@ -71,6 +74,7 @@ export class HostBroker {
     if (this.closed) return this.bridge.retiring;
     this.closed = true;
     clearInterval(this.lease);
+    this.bridge.off('helperExit', this.onHelperExit);
     if (this.active) this.#revoke(this.active, fault('BROKER_CLOSED', 'Host broker stopped; native session ended'));
     const stopped = new Promise(resolve => this.server.close(() => resolve()));
     for (const connection of this.connections) if (!connection.session) connection.socket.destroy();
