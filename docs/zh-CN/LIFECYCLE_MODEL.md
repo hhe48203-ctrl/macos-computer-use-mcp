@@ -17,7 +17,7 @@ curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools
   | shasum -a 256 -c -) && npm run check:tla -- "$tlc_dir/tla2tools.jar"
 ```
 
-命令先跑 [Local.cfg](../../formal/Local.cfg)，再跑 [Broker.cfg](../../formal/Broker.cfg)。TLC 状态与轨迹文件放在临时目录。两套配置均允许两次原生调用。本地配置允许三个 REPL 执行和两次代际失效。broker 配置允许两个执行、两个会话、一次代际失效，以及每个心跳间隔内一次抽象的租约计时。这个范围可以覆盖执行和调用竞争、迟到回复、进程退役和 helper 或会话更替。有限任务耗尽后，模型允许状态保持不变。配置关闭了 TLC 的死锁检查，通过显式时序性质检查退役进展。
+命令先跑 [Local.cfg](../../formal/Local.cfg)，再跑 [Broker.cfg](../../formal/Broker.cfg)。TLC 状态与轨迹文件放在临时目录。两套配置均允许两次原生调用。本地配置允许三个 REPL 执行和两次代际失效。broker 配置允许两个执行、两个会话和一次代际失效。模型用一个抽象计时步表示从续租到达过期阈值。这个范围可以覆盖执行和调用竞争、迟到回复、进程退役和 helper 或会话更替。有限任务耗尽后，模型允许状态保持不变。配置关闭了 TLC 的死锁检查，通过显式时序性质检查退役进展。
 
 ## 模型与实现
 

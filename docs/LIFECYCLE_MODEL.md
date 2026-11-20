@@ -17,7 +17,7 @@ curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools
   | shasum -a 256 -c -) && npm run check:tla -- "$tlc_dir/tla2tools.jar"
 ```
 
-The command runs [Local.cfg](../formal/Local.cfg) first and [Broker.cfg](../formal/Broker.cfg) second, using a temporary directory for TLC state and trace files. Each configuration allows two native invocations. The local one allows three REPL evaluations and two invalidations. The broker one allows two evaluations, two sessions, one invalidation, and one abstract lease tick per heartbeat interval. The bounds allow competing evaluations and calls, late replies, retirement, and a replacement helper or session. Stuttering is permitted at the end of finite workloads. The model disables TLC's deadlock check and checks retirement progress with explicit temporal properties.
+The command runs [Local.cfg](../formal/Local.cfg) first and [Broker.cfg](../formal/Broker.cfg) second, using a temporary directory for TLC state and trace files. Each configuration allows two native invocations. The local one allows three REPL evaluations and two invalidations. The broker one allows two evaluations, two sessions, and one invalidation. One abstract tick takes the lease from renewal to its expiration threshold. The bounds allow competing evaluations and calls, late replies, retirement, and a replacement helper or session. Stuttering is permitted at the end of finite workloads. The model disables TLC's deadlock check and checks retirement progress with explicit temporal properties.
 
 ## Model and implementation
 
