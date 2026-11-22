@@ -6,6 +6,9 @@ const target = { pid, windowId };
 const inputMode = { mode: z.enum(['background', 'foreground']).default('background') };
 const holdDuration=z.number().finite().min(0).max(5000).optional();
 const modifiers=z.string().regex(/^(cmd|command|meta|super|ctrl|control|alt|option|shift)(\+(cmd|command|meta|super|ctrl|control|alt|option|shift))*$/i).optional();
+const keyChord = z.string().min(1).max(100).transform(chord =>
+  chord.replace(/((?:^|\+)\s*)arrow(?=(?:up|down|left|right)\s*$)/i, '$1')
+);
 const coordinate = z.number().finite().nonnegative();
 const snapshotId = z.string().uuid();
 const elementId = z.string().regex(/^e\d+$/);
@@ -51,7 +54,7 @@ export const tools = [
       ctx.addIssue({code:'custom',message:'visualCheck requires background event text, a distinct prior line and 1–160 UTF-16 units of single-line text, without an AX reference or replaceAll'});
     }
   }), description: 'Default background auto/ax inserts Unicode through AX and verifies exact text. Pass the observed existing text as replaceAll to replace the full value of a focused exact AX target. strategy:event sends real Unicode keyboard events only to this process, with no AX mutations, global HID input or clipboard. By default it requires an already-focused text element and readable insertion range. For an AX-hidden editor, visualCheck supplies the exact prior OCR line and a logical-point region in the same focused background window; visualVerified confirms the new displayed line. The AX path also needs an existing internal key window; the opt-in scoped AppKit route can prepare that window with app-local notices; exact readback is required after every bounded packet; newline controls are isolated. It never falls back to AX or foreground. Optional snapshotId+elementId observes an exact target; event strategy does not focus it. Frameworks may ignore or transform events; failures may be partial. Explicit foreground mode uses CGEvent typing.' },
-  { name: 'cu_key', method: 'key', schema: obj({ ...target, key: z.string().min(1).max(100), durationMs:holdDuration, strategy:z.enum(['auto','event','appkit']).default('auto'), ...inputMode }).superRefine((v,ctx)=>{
+  { name: 'cu_key', method: 'key', schema: obj({ ...target, key: keyChord, durationMs:holdDuration, strategy:z.enum(['auto','event','appkit']).default('auto'), ...inputMode }).superRefine((v,ctx)=>{
     if(v.mode==='foreground'&&(v.strategy!=='auto'||v.durationMs!==undefined))ctx.addIssue({code:'custom',message:'Key strategy selects a background mechanism only'});
     if(v.strategy==='appkit'&&v.durationMs!==undefined)ctx.addIssue({code:'custom',message:'The experimental AppKit key strategy does not support a hold'});
   }), description: 'Send a key/chord (CMD+A, Enter, Tab, Escape, Left, F5). Optional durationMs 0..5000 forces paired target events with a timed hold, no artificial repeats; cancellation releases the held key to its original target. Default background auto uses verified AX selection for CMD+A when supported; strategy:event forces real key events without that AX replacement. Experimental strategy:appkit adds app-local focus preparation for one background key in a bundle allowed by CU_EXPERIMENTAL_APPKIT_KEY_BUNDLE_IDS. The preparation includes a target-only activation-point click and may activate the target text input context. App acceptance varies, so observe result. Explicit foreground mode activates target.' },

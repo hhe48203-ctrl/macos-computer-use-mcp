@@ -761,7 +761,9 @@ struct HeldBackgroundMouse {
         }
     }
     func assertBackgroundIsolation(_ pid:pid_t,_ wid:CGWindowID,_ orderBefore:NormalWindowOrder,_ foregroundBefore:pid_t?) throws {
-        if foregroundBefore != pid, NSWorkspace.shared.frontmostApplication?.processIdentifier == pid { throw BridgeError("BACKGROUND_APP_ACTIVATED","The target app activated itself in response to the action. Background isolation was not maintained; no activation-restoration workaround was attempted.") }
+        if foregroundBefore != pid, NSWorkspace.shared.frontmostApplication?.processIdentifier == pid {
+            throw BridgeError("BACKGROUND_APP_ACTIVATED", "The target app became foreground during a background action. Input may already have taken effect. Pause input, re-observe, and confirm the target is in the background before resuming background work.")
+        }
         let orderAfter = backgroundWindowOrder()
         switch backgroundWindowCrossing(pid: pid, windowId: Int(wid), before: orderBefore, after: orderAfter) {
         case .existingWindow:

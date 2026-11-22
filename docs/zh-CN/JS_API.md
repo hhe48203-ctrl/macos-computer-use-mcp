@@ -11,6 +11,8 @@ Agent 只看到两个 MCP 工具，旧的17个 cu_* 工具已从公开服务移�
 
 `cua`、`nodeRepl`、console 预先可用。支持真正的 var/let/const、顶层 await；重复声明同名 let/const 会报 SyntaxError，普通同步/异步错误后绑定保留。超时、取消、进程退出或内存/输出限制则重建会话。输出最多8MiB或256个块。Console/Worker stdout 不进入 MCP 协议 stdout。
 
+重新加载或连接 MCP 客户端会创建新的 JavaScript 绑定。如果此前的 `app` 变量未定义，列出当前窗口并重新绑定目标窗口。
+
 所有桌面操作都应 await。已经发起的原生请求会在返回前清理；结束后才触发的旧异步回调无法在下一次调用中发起操作。重置不能撤回已投递输入。代码在可信本机 Node 中运行，不提供安全沙箱，不能运行不可信网页提供的 JS。
 
 ## 选择和观察
@@ -106,6 +108,8 @@ let replacement=await app.reconnect({pid:789,windowId:1011});
 
 click/pressKey 的 `durationMs` 为0..5000毫秒，控制每个 down/up 对之间的间隔；显式 key duration（含0）禁用 CMD+A 的 AX 替代。不模拟系统自动重复，也不生成全局修饰键 down/up。取消、重置、目标移动会尝试仅向原目标释放已按住的键或按钮；应用退出或强制硬终止无法保证收件。实验 AppKit 路径的局部通知会覆盖所请求的按住区间，长按没有新增真人 IME 并用验收。
 
+`pressKey` 的方向键可写作 `Up`、`Down`、`Left`、`Right`，也可写作 `ArrowUp`、`ArrowDown`、`ArrowLeft`、`ArrowRight`，支持 `Shift+ArrowLeft` 等组合键。
+
 垂直默认距离已校准为 `round(windowHeight*pages)`；两种自建应用、两档尺寸和连续滚动的实测一致。水平保留 `round(windowWidth*0.8*pages)`：原版本轮水平输入未产生位移，不能声称水平兼容。第四个参数 `{distanceMode:'legacy'}` 保留 v1.0 两轴的0.8算法。返回 `scrollDistance` 给出发送的逻辑点增量；实际位移仍由应用决定。完整数据见 [兼容改进验收](COMPATIBILITY_V1_1.md)。
 
 字符串 `AXValue` 可读时，`setValue` 用 `valueVerified` 报告回读是否与请求完全一致。请求修改后仍读到原值会报 `AX_VALUE_UNCHANGED`。应用格式化了结果或回读不可用时，应重新观察。后台打开值只读、没有子节点且只暴露原生菜单动作的关闭下拉框时，会报 `BACKGROUND_POPUP_UNSUPPORTED`。从这类下拉框开始拖动，或聚焦后发送上下方向键，都会触发同一预检，带修饰键的方向键也适用。真实事件需要应用支持。`event` 文本默认使用已聚焦的可读非安全文本及选择范围，也可用 `visualCheck` 显式选择视觉回读。
@@ -161,6 +165,8 @@ await cua.getScreenshot({
 `BACKGROUND_WINDOW_REORDERED` 表示目标应用的已有普通窗口越过了另一应用的窗口，或新出现的普通窗口越过了原本盖在操作目标上方的窗口。普通 `AXPress` 元数据可能不包含应用将打开 sheet 的信息。这种情况下，收到错误时对话框可能已经打开，应先观察当前窗口再继续操作。
 
 后台预检识别到关闭的原生 AppKit 下拉框时，会拒绝打开菜单或按首字母选值，返回 `BACKGROUND_POPUP_UNSUPPORTED`。支持首字母选值的 Chromium 网页控件取得应用内 AX 焦点后仍可接收可打印按键。对已观察到的 GnuCash 英文 Reconcile 工具栏按钮及工具栏溢出入口，后台点击会在投递前返回 `BACKGROUND_GNUCASH_DIALOG_UNSUPPORTED`。检查使用精确窗口的 OCR，覆盖已测量的图标加文字工具栏布局。其他布局和对话框命令仍需独立验证。
+
+`BACKGROUND_APP_ACTIVATED` 表示目标应用在后台操作期间来到前台，应用可能已收到输入。先暂停输入并重新观察。仅允许后台操作的任务，应在确认目标回到后台后继续。
 
 启动服务时设置 `CU_PUBLIC_API_ONLY=1`，将驱动限制在有文档的 macOS API。后台点击需要 AX 语义路径。后台指针事件和实验性 AppKit 准备返回 `BACKGROUND_PUBLIC_API_UNSUPPORTED`。显式后台 `showMenu` 会在投递前拒绝，因为原生菜单可能干扰前台会话。进程定向按键要求目标窗口与应用内 AX 焦点一致。驱动采样前台应用和系统 AX 焦点，此模式无法查询实际键盘接收进程，因此 `keyboardFocusResolved` 为 `false`。
 

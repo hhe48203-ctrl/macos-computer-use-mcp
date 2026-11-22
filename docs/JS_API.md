@@ -11,6 +11,8 @@ The agent sees only two MCP tools; the 17 legacy `cu_*` tools have been removed 
 
 `cua`, `nodeRepl` and `console` are available up front. Real `var`/`let`/`const` and top-level `await` are supported; redeclaring an existing `let`/`const` raises a SyntaxError, while ordinary sync/async errors keep bindings. A timeout, cancellation, process exit or a memory/output limit rebuilds the session. Output is capped at 8 MiB or 256 blocks. Console/Worker stdout never enters the MCP protocol stdout.
 
+Reloading or reconnecting the MCP client starts with fresh JavaScript bindings. If a previous `app` variable is undefined, list windows and bind the intended window again.
+
 Every desktop operation should be awaited. Native requests already issued are cleaned up before returning; an old asynchronous callback that fires after completion cannot issue operations in the next call. Reset cannot recall input that was already delivered. Code runs in a trusted local Node process with no security sandbox, so never run JS supplied by an untrusted web page.
 
 ## Selecting and observing
@@ -106,6 +108,8 @@ Modifier-click example: `await app.click([200,400],{key:'super+shift',durationMs
 
 `durationMs` for click/pressKey is 0..5000 ms and controls the interval between each down/up pair; an explicit key duration (including 0) disables the AX substitute for CMD+A. System auto-repeat is not simulated and no global modifier down/up events are generated. Cancellation, reset and target movement attempt to release held keys or buttons only toward the original target; app exit or a forced hard kill cannot guarantee reception. The experimental AppKit route's local notices cover the requested hold interval, and long holds have no new human IME concurrent-use acceptance.
 
+`pressKey` accepts the arrow names `Up`, `Down`, `Left`, `Right` and their `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight` aliases, including in chords such as `Shift+ArrowLeft`.
+
 The default vertical distance is calibrated to `round(windowHeight*pages)`, consistent with measurements on two owned apps, two sizes and consecutive scrolling. Horizontal keeps `round(windowWidth*0.8*pages)`: the original produced no horizontal displacement in this round, so no horizontal compatibility is claimed. The fourth parameter `{distanceMode:'legacy'}` restores the v1.0 0.8 algorithm on both axes. The returned `scrollDistance` gives the logical-point delta sent; the actual displacement is still up to the app. Full data is in the [compatibility acceptance](COMPATIBILITY_V1_1.md).
 
 For a readable string `AXValue`, `setValue` reports `valueVerified` when the returned value exactly matches the request. If a requested change leaves the previous value in place, it reports `AX_VALUE_UNCHANGED`. Observe normalized or unreadable values before proceeding. Closed popups with read-only values, no children and only native menu actions report `BACKGROUND_POPUP_UNSUPPORTED` for background opens. The same preflight covers a drag starting on the popup and Up and Down on the focused popup, including with modifiers. Real events require app support. The `event` text strategy uses a pre-existing, readable, non-secure text focus and selection range unless `visualCheck` explicitly selects visual readback.
@@ -161,6 +165,8 @@ Real event strategies and synthetic AppKit activation are separate. The pi setup
 `BACKGROUND_WINDOW_REORDERED` reports an existing normal window crossing another app’s window or a newly visible normal window crossing a window that was above the action target. Ordinary `AXPress` metadata can omit the fact that the app will open a sheet. In that case, the app may already have opened its dialog when the error arrives. Observe current windows before another mutation.
 
 The background popup preflight returns `BACKGROUND_POPUP_UNSUPPORTED` for menu opening and first-letter selection on recognized closed native AppKit popups. Chromium web controls that support type-ahead can still receive a printable key after local AX focus. GnuCash background clicks on the observed English Reconcile toolbar control and toolbar overflow return `BACKGROUND_GNUCASH_DIALOG_UNSUPPORTED` before dispatch. This check uses the exact window's OCR and covers the measured text-and-icons toolbar layout. Other layouts and dialog commands need their own validation.
+
+`BACKGROUND_APP_ACTIVATED` means the target became foreground during a background action. The app may already have received input. Pause input and re-observe, then resume a background-only task after confirming the target is back in the background.
 
 Set `CU_PUBLIC_API_ONLY=1` at server startup to restrict the driver to documented macOS APIs. Background clicks need a semantic AX route. Background pointer events and experimental AppKit preparation return `BACKGROUND_PUBLIC_API_UNSUPPORTED`. Explicit background `showMenu` is refused before dispatch because native menu tracking can affect the foreground session. Process-directed key events require an exact AX-focused target window. Foreground app and system AX focus are sampled, and `keyboardFocusResolved` is false because the system keyboard-recipient query is unavailable in this mode.
 

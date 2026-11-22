@@ -83,6 +83,19 @@ test('event key strategy preserves real select-all without a semantic fallback',
  assert.equal(schema('cu_key').safeParse({...args,strategy:'event-then-AX'}).success,false);
 });
 
+test('arrow aliases reach native key guards as canonical directions', () => {
+  const key = schema('cu_key');
+  const target = { pid: 1, windowId: 2 };
+  for (const direction of ['Up', 'Down', 'Left', 'Right']) {
+    assert.deepEqual(key.parse({ ...target, key: `Arrow${direction}` }),
+      key.parse({ ...target, key: direction }));
+  }
+  assert.equal(key.parse({ ...target, key: 'ARROWDOWN' }).key, 'DOWN');
+  assert.equal(key.parse({ ...target, key: 'Shift + ArrowLeft' }).key, 'Shift + Left');
+  assert.equal(key.parse({ ...target, key: 'CMD+A' }).key, 'CMD+A');
+  assert.equal(key.parse({ ...target, key: 'ArrowDownExtra' }).key, 'ArrowDownExtra');
+});
+
 test('new app launch requires an explicit visible-window choice',()=>{
  const launch=tools.find(t=>t.name==='cu_launch').schema;
  assert.equal(launch.parse({bundleId:'com.apple.TextEdit'}).allowVisibleWindows,false);
