@@ -27,14 +27,14 @@ export function createServer(bridge = defaultBridge(), {validateCode} = {}) {
   server.registerTool('js', {
     description:'Run JavaScript in a persistent Node REPL with cua and nodeRepl. Top-level await and var/let/const/app objects persist. Documentation and observations display automatically. Use nodeRepl.write(value) for text and nodeRepl.emitImage(bytes) for rich images. Await desktop operations. Timeout or cancellation clears the session and stops native input.',
     inputSchema:z.object({code:z.string().min(1).max(200000),timeout_ms:z.number().int().min(100).max(120000).default(30000),title:z.string().max(200).optional()}).strict(),
-    annotations:{readOnlyHint:false,destructiveHint:true,openWorldHint:true}
+    annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:true}
   },protect((args,extra)=>{
     validateCode?.(args.code);
     return runtime.execute(args.code,{timeoutMs:args.timeout_ms,signal:extra.signal});
   }));
   server.registerTool('js_reset', {
     description:'Stop JavaScript/native work, hide the agent cursor and clear all bindings. Previously delivered side effects cannot be undone.',
-    inputSchema:z.object({}).strict(),annotations:{readOnlyHint:false,destructiveHint:false,openWorldHint:false}
+    inputSchema:z.object({}).strict(),annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false}
   },protect(()=>runtime.reset()));
   return { server, bridge, runtime };
 }
