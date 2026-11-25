@@ -166,7 +166,9 @@ await cua.getScreenshot({
 
 后台预检识别到关闭的原生 AppKit 下拉框时，会拒绝打开菜单或按首字母选值，返回 `BACKGROUND_POPUP_UNSUPPORTED`。支持首字母选值的 Chromium 网页控件取得应用内 AX 焦点后仍可接收可打印按键。对已观察到的 GnuCash 英文 Reconcile 工具栏按钮及工具栏溢出入口，后台点击会在投递前返回 `BACKGROUND_GNUCASH_DIALOG_UNSUPPORTED`。检查使用精确窗口的 OCR，覆盖已测量的图标加文字工具栏布局。其他布局和对话框命令仍需独立验证。
 
-`BACKGROUND_APP_ACTIVATED` 表示目标应用在后台操作期间来到前台，应用可能已收到输入。先暂停输入并重新观察。仅允许后台操作的任务，应在确认目标回到后台后继续。
+`BACKGROUND_APP_ACTIVATED` 表示目标应用在后台操作期间来到前台。`BACKGROUND_WINDOW_REORDERED` 表示目标窗口跨过了其他应用的窗口。应用可能已收到输入。先暂停输入并重新观察，仅允许后台操作的任务应在确认目标恢复预期窗口位置后继续。
+
+Google Chrome 的后台点击通过 AX 动作完成。如果点击没有对应的语义动作，或请求显式要求指针点击或拖动，helper 会在发送鼠标按键事件前返回 `BACKGROUND_CHROME_POINTER_UNSUPPORTED`。优先使用最新 AX 快照中的索引调用 `click(index,{strategy:'ax'})`。控件公开 `AXScrollToVisible` 时，可用 `performSecondaryAction(index,'scrollToVisible')` 将它滚动到可见区域。
 
 启动服务时设置 `CU_PUBLIC_API_ONLY=1`，将驱动限制在有文档的 macOS API。后台点击需要 AX 语义路径。后台指针事件和实验性 AppKit 准备返回 `BACKGROUND_PUBLIC_API_UNSUPPORTED`。显式后台 `showMenu` 会在投递前拒绝，因为原生菜单可能干扰前台会话。进程定向按键要求目标窗口与应用内 AX 焦点一致。驱动采样前台应用和系统 AX 焦点，此模式无法查询实际键盘接收进程，因此 `keyboardFocusResolved` 为 `false`。
 

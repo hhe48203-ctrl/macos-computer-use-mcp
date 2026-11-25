@@ -755,11 +755,21 @@ struct HeldBackgroundMouse {
 
     func backgroundWindowOrder() -> NormalWindowOrder {
         let rows = CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [Object] ?? []
+        let cursorID = agentCursor.panel?.windowNumber
         return rows.compactMap { row in
             guard number(row,kCGWindowLayer as String) == 0, let id=row[kCGWindowNumber as String] as? Int,let pid=row[kCGWindowOwnerPID as String] as? Int else{return nil}
+            // Cursor ordering is unrelated to the target crossing another app.
+            if pid == getpid(), id == cursorID { return nil }
             return (id:id,pid:pid_t(pid))
         }
     }
+
+    func requireBackgroundPointerButtons(_ application: NSRunningApplication) throws {
+        guard application.bundleIdentifier != "com.google.Chrome" else {
+            throw BridgeError("BACKGROUND_CHROME_POINTER_UNSUPPORTED", "Chrome can raise its window when it receives background mouse-button events. No input was sent. For a click, observe the actual control and use its current AX index with strategy:ax.")
+        }
+    }
+
     func assertBackgroundIsolation(_ pid:pid_t,_ wid:CGWindowID,_ orderBefore:NormalWindowOrder,_ foregroundBefore:pid_t?) throws {
         if foregroundBefore != pid, NSWorkspace.shared.frontmostApplication?.processIdentifier == pid {
             throw BridgeError("BACKGROUND_APP_ACTIVATED", "The target app became foreground during a background action. Input may already have taken effect. Pause input, re-observe, and confirm the target is in the background before resuming background work.")
@@ -802,6 +812,9 @@ struct HeldBackgroundMouse {
             try await checkGnuCashToolbar(application, p, frame, try point(p, frame))
         }
         let scopedInput = p["strategy"] as? String == "appkit" ? ScopedAppKitInput(rawValue: method) : nil
+        if method == "drag" || (method == "click" && (p["strategy"] as? String == "event" || scopedInput == .click)) {
+            try requireBackgroundPointerButtons(application)
+        }
         if SystemInputFocus.publicAPIOnly && (scopedInput != nil || method == "scroll" ||
             (method == "click" && p["strategy"] as? String == "event") ||
             (method == "type_text" && p["visualCheck"] != nil)) {
@@ -891,6 +904,7 @@ struct HeldBackgroundMouse {
                 }
             }
             guard strategy != "ax" else {throw BridgeError("BACKGROUND_CLICK_UNSUPPORTED","No semantic click equivalent at this target; no event was sent")}
+            try requireBackgroundPointerButtons(application)
             guard !SystemInputFocus.publicAPIOnly else {
                 throw BridgeError("BACKGROUND_PUBLIC_API_UNSUPPORTED", "No semantic background click is available here. Public-API-only mode disables the raw pointer route. No input was sent.")
             }
